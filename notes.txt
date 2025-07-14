@@ -1,0 +1,18 @@
+1) Configuring and Creating network identities and determining no. of peers, orderers, org and users 
+    go into channel folder within artifacts
+    configure crypto-config.yaml 
+
+2) Creating channel artifacts & create anchor peers
+ go into channel folder within artifacts
+    configure configtx.yaml
+
+-> For above two steps configure and run create-artifacts.sh
+
+3) do 'docker-compose up -d' in artifacts directory
+4) execute createChannel.sh in WORKDIR - to create channel, join peers and update anchor peers
+    check if peers are on network eg:-  docker exec -it peer0.org1.example.com 
+
+5) Deploying Chaincode - run deployChaincode.sh
+
+
+    

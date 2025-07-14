@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: ../api-2.0
+      dockerfile: Dockerfile
+    container_name: fabric-backend
+    ports:
+      - "4000:4000"
+    networks:
+      - artifacts_test
+    volumes:
+      - .:/usr/src/app/artifacts
+      - ../api-2.0/org1-wallet:/usr/src/app/org1-wallet
+      - ../api-2.0/org2-wallet:/usr/src/app/org2-wallet
+    working_dir: /usr/src/app
+    command: ["node", "app.js"]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: fabric-frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - artifacts_test
+    volumes:
+      - ../frontend:/app
+    working_dir: /app
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - backend
+
+networks:
+  artifacts_test:
+    external: true  # Must already exist using: docker network create artifacts_test
+
+
+
+# docker compose -f docker-compose.fabric.yml up -d
+# docker compose -f docker-compose.app.yml up -d
+

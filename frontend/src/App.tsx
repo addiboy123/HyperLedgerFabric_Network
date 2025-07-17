@@ -9,7 +9,8 @@ function App() {
 
   useEffect(() => {
     // Check if user is already authenticated
-    // setIsAuthenticated(apiService.isAuthenticated());
+    setIsAuthenticated(apiService.isAuthenticated());
+    // setIsAuthenticated(true);
     setLoading(false);
   }, []);
 

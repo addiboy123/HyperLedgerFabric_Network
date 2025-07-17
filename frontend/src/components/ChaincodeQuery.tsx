@@ -1,20 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ApiResponse } from '../types/api';
 
+const FUNCTION_ARGS = {
+  queryCar: ['Key'],
+  queryCarsByOwner: ['Owner'],
+  getHistoryForAsset: ['Key']
+};
+
 export const ChaincodeQuery: React.FC = () => {
   const [channelName, setChannelName] = useState('');
   const [chaincodeName, setChaincodeName] = useState('');
-  const [fcn, setFcn] = useState('');
-  const [args, setArgs] = useState('');
+  const [fcn, setFcn] = useState('queryCar');
+  const [argValues, setArgValues] = useState<Record<string, string>>({});
   const [peer, setPeer] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
 
+  const functions = Object.keys(FUNCTION_ARGS);
+  const currentArgs = FUNCTION_ARGS[fcn as keyof typeof FUNCTION_ARGS] || [];
+
+  useEffect(() => {
+    // Reset arg values when function changes
+    const newArgValues: Record<string, string> = {};
+    currentArgs.forEach(arg => {
+      newArgValues[arg] = argValues[arg] || '';
+    });
+    setArgValues(newArgValues);
+  }, [fcn]);
+
+  const updateArgValue = (argName: string, value: string) => {
+    setArgValues(prev => ({
+      ...prev,
+      [argName]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!channelName || !chaincodeName || !fcn || !args) {
+    if (!channelName || !chaincodeName || !fcn) {
       return;
     }
 
@@ -22,11 +47,13 @@ export const ChaincodeQuery: React.FC = () => {
     setResponse(null);
 
     try {
+      const argsArray = currentArgs.map(arg => argValues[arg] || '');
+
       const result = await apiService.queryChaincode({
         channelName,
         chaincodeName,
         fcn,
-        args,
+        args: argsArray,
         peer: peer.trim() || undefined
       });
 
@@ -90,34 +117,45 @@ export const ChaincodeQuery: React.FC = () => {
           <label htmlFor="fcn" className="block text-sm font-medium text-gray-700 mb-2">
             Function Name *
           </label>
-          <input
+          <select
             id="fcn"
-            type="text"
             value={fcn}
             onChange={(e) => setFcn(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., queryAsset"
             required
-          />
+          >
+            {functions.map((func) => (
+              <option key={func} value={func}>
+                {func}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div>
-          <label htmlFor="args" className="block text-sm font-medium text-gray-700 mb-2">
-            Arguments (JSON Array) *
-          </label>
-          <textarea
-            id="args"
-            value={args}
-            onChange={(e) => setArgs(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder='["arg1", "arg2", "arg3"]'
-            required
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Enter arguments as a JSON array, e.g., ["assetId"] or ["key1", "key2"]
-          </p>
-        </div>
+        {currentArgs.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Arguments *
+            </label>
+            <div className="space-y-3">
+              {currentArgs.map((arg) => (
+                <div key={arg}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {arg}
+                  </label>
+                  <input
+                    type="text"
+                    value={argValues[arg] || ''}
+                    onChange={(e) => updateArgValue(arg, e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={`Enter ${arg}`}
+                    required
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <label htmlFor="peer" className="block text-sm font-medium text-gray-700 mb-2">
@@ -135,7 +173,7 @@ export const ChaincodeQuery: React.FC = () => {
 
         <button
           type="submit"
-          disabled={loading || !channelName || !chaincodeName || !fcn || !args}
+          disabled={loading || !channelName || !chaincodeName || !fcn}
           className="w-full flex items-center justify-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (

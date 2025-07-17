@@ -24,8 +24,6 @@ services:
       - "5173:5173"
     networks:
       - artifacts_test
-    volumes:
-      - ../frontend:/app
     working_dir: /app
     command: ["npm", "run", "dev"]
     depends_on:

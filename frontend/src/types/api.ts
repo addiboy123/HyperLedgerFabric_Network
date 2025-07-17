@@ -30,6 +30,6 @@ export interface QueryRequest {
   channelName: string;
   chaincodeName: string;
   fcn: string;
-  args: string;
+  args: string[];
   peer?: string;
 }

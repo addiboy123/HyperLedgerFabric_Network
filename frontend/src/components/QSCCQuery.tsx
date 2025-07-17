@@ -1,19 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Database, Copy, AlertCircle, CheckCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ApiResponse } from '../types/api';
 
+const FUNCTION_ARGS = {
+  GetTransactionByID: ['ChannelName', 'TxID'],
+  GetBlockByNumber: ['ChannelName', 'BlockNumber']
+};
+
 export const QSCCQuery: React.FC = () => {
   const [channelName, setChannelName] = useState('');
   const [chaincodeName, setChaincodeName] = useState('');
-  const [fcn, setFcn] = useState('');
-  const [args, setArgs] = useState('');
+  const [fcn, setFcn] = useState('GetTransactionByID');
+  const [argValues, setArgValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
 
+  const functions = Object.keys(FUNCTION_ARGS);
+  const currentArgs = FUNCTION_ARGS[fcn as keyof typeof FUNCTION_ARGS] || [];
+
+  useEffect(() => {
+    // Reset arg values when function changes
+    const newArgValues: Record<string, string> = {};
+    currentArgs.forEach(arg => {
+      newArgValues[arg] = argValues[arg] || '';
+    });
+    setArgValues(newArgValues);
+  }, [fcn]);
+
+  const updateArgValue = (argName: string, value: string) => {
+    setArgValues(prev => ({
+      ...prev,
+      [argName]: value
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!channelName || !chaincodeName || !fcn || !args) {
+    if (!channelName || !chaincodeName || !fcn) {
       return;
     }
 
@@ -21,11 +45,13 @@ export const QSCCQuery: React.FC = () => {
     setResponse(null);
 
     try {
+      const argsArray = currentArgs.map(arg => argValues[arg] || '');
+
       const result = await apiService.queryQSCC({
         channelName,
         chaincodeName,
         fcn,
-        args
+        args: argsArray
       });
 
       setResponse(result);
@@ -44,63 +70,11 @@ export const QSCCQuery: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
-  const commonQueries = [
-    {
-      name: 'Get Chaincode Data',
-      fcn: 'GetChaincodeData',
-      args: '["chaincodeName"]',
-      description: 'Get information about a specific chaincode'
-    },
-    {
-      name: 'Get Chaincodes',
-      fcn: 'GetChaincodes',
-      args: '[]',
-      description: 'List all chaincodes on the channel'
-    },
-    {
-      name: 'Get Block by Number',
-      fcn: 'GetBlockByNumber',
-      args: '["channelName", "blockNumber"]',
-      description: 'Get a specific block by its number'
-    },
-    {
-      name: 'Get Block by Hash',
-      fcn: 'GetBlockByHash',
-      args: '["channelName", "blockHash"]',
-      description: 'Get a specific block by its hash'
-    }
-  ];
-
-  const fillExample = (query: typeof commonQueries[0]) => {
-    setFcn(query.fcn);
-    setArgs(query.args);
-  };
-
   return (
     <div className="p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">QSCC Query</h2>
         <p className="text-gray-600">Query the Query System Chaincode for blockchain metadata</p>
-      </div>
-
-      {/* Common Queries */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">Common Queries</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {commonQueries.map((query, index) => (
-            <div
-              key={index}
-              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-all cursor-pointer"
-              onClick={() => fillExample(query)}
-            >
-              <h4 className="font-medium text-gray-900 mb-1">{query.name}</h4>
-              <p className="text-sm text-gray-600 mb-2">{query.description}</p>
-              <code className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                {query.fcn}
-              </code>
-            </div>
-          ))}
-        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -140,38 +114,49 @@ export const QSCCQuery: React.FC = () => {
           <label htmlFor="fcn" className="block text-sm font-medium text-gray-700 mb-2">
             Function Name *
           </label>
-          <input
+          <select
             id="fcn"
-            type="text"
             value={fcn}
             onChange={(e) => setFcn(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., GetChaincodes"
             required
-          />
+          >
+            {functions.map((func) => (
+              <option key={func} value={func}>
+                {func}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div>
-          <label htmlFor="args" className="block text-sm font-medium text-gray-700 mb-2">
-            Arguments (JSON Array) *
-          </label>
-          <textarea
-            id="args"
-            value={args}
-            onChange={(e) => setArgs(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder='["arg1", "arg2"]'
-            required
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Enter arguments as a JSON array. Use [] for functions that don't require arguments.
-          </p>
-        </div>
+        {currentArgs.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Arguments *
+            </label>
+            <div className="space-y-3">
+              {currentArgs.map((arg) => (
+                <div key={arg}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {arg}
+                  </label>
+                  <input
+                    type="text"
+                    value={argValues[arg] || ''}
+                    onChange={(e) => updateArgValue(arg, e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={`Enter ${arg}`}
+                    required
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           type="submit"
-          disabled={loading || !channelName || !chaincodeName || !fcn || !args}
+          disabled={loading || !channelName || !chaincodeName || !fcn}
           className="w-full flex items-center justify-center px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (

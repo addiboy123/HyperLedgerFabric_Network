@@ -1,19 +1,20 @@
-# Use latest stable Node.js
-FROM node:22-alpine
+# ✅ Use full Node image (not Alpine)
+FROM node:22
 
 # Set working directory
 WORKDIR /app
 
-# Copy and install dependencies
+# Copy only package files to leverage Docker cache
 COPY package*.json ./
+
+# ✅ Explicitly install all dependencies
 RUN npm install
 
-# Copy app source code
+# Copy the full source
 COPY . .
 
-# Expose frontend dev server port (Vite default)
+# ✅ Expose Vite's dev server port
 EXPOSE 5173
 
-# Start the dev server
-CMD ["npm", "run", "dev", "--", "--host"]
-
+# ✅ Run Vite directly using `npx` (guaranteed to find it even if not in PATH)
+CMD ["npx", "vite", "--host"]

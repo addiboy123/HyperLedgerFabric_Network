@@ -48,13 +48,22 @@ setGlobalsForPeer1Org2() {
 }
 
 presetup() {
-    echo Vendoring Go dependencies ...
-    pushd ./artifacts/src/github.com/fabcar/go
-    # GO111MODULE=on go mod tidy
-    GO111MODULE=on go mod vendor
-    popd
-    echo Finished vendoring Go dependencies
+    echo "Vendoring Go dependencies ..."
+
+    pushd ./artifacts/src/github.com/fabcar/go > /dev/null
+
+    # Enable Go modules
+    export GO111MODULE=on
+
+    # Ensure go.mod and go.sum are populated correctly
+    go mod tidy
+    go mod download
+    go mod vendor
+
+    popd > /dev/null
+    echo "Finished vendoring Go dependencies"
 }
+
 # presetup
 
 CHANNEL_NAME="mychannel"
@@ -284,8 +293,10 @@ chaincodeQuery() {
 # chaincodeQuery
 
 # Run this function if you add any new dependency in chaincode
-# presetup
 
+
+
+# presetup
 packageChaincode
 installChaincode
 queryInstalled

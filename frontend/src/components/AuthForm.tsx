@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { User, Shield, UserPlus, LogIn } from 'lucide-react';
+import { Shield, UserPlus, LogIn } from 'lucide-react';
 import { apiService } from '../services/api';
 
 interface AuthFormProps {
   onAuthSuccess: () => void;
 }
 
-type AuthMode = 'login' | 'register' | 'createUser';
+type AuthMode = 'login' | 'register';
 
 export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [username, setUsername] = useState('');
-  const [orgName, setOrgName] = useState('');
+  const [orgName, setOrgName] = useState('Org1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const organizations = ['Org1', 'Org2', 'Org3'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,9 +35,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
           break;
         case 'register':
           response = await apiService.register({ username, orgName });
-          break;
-        case 'createUser':
-          response = await apiService.createUser({ username, orgName });
           break;
       }
 
@@ -69,14 +68,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
           buttonText: 'Register',
           color: 'green'
         };
-      case 'createUser':
-        return {
-          title: 'Create User',
-          description: 'Register and enroll a new user',
-          icon: User,
-          buttonText: 'Create User',
-          color: 'purple'
-        };
     }
   };
 
@@ -96,7 +87,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
           </div>
 
           <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
-            {(['login', 'register', 'createUser'] as AuthMode[]).map((authMode) => (
+            {(['login', 'register'] as AuthMode[]).map((authMode) => (
               <button
                 key={authMode}
                 onClick={() => setMode(authMode)}
@@ -106,7 +97,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {authMode === 'createUser' ? 'Create' : authMode === 'register' ? 'Register' : 'Login'}
+                {authMode === 'register' ? 'Register' : 'Login'}
               </button>
             ))}
           </div>
@@ -129,17 +120,21 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
 
             <div>
               <label htmlFor="orgName" className="block text-sm font-medium text-gray-700 mb-2">
-                Organization Name
+                Organization
               </label>
-              <input
+              <select
                 id="orgName"
-                type="text"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                placeholder="Enter organization name"
                 required
-              />
+              >
+                {organizations.map((org) => (
+                  <option key={org} value={org}>
+                    {org}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && (

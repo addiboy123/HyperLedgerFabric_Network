@@ -1,32 +1,42 @@
-import React, { useState } from 'react';
-import { Send, Plus, Trash2, AlertCircle, CheckCircle, Copy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, AlertCircle, CheckCircle, Copy } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ApiResponse } from '../types/api';
+
+const FUNCTION_ARGS = {
+  createCar: ['Key', 'Make', 'Model', 'Colour', 'Owner'],
+  changeCarOwner: ['Key', 'NewOwner']
+};
+
+const TRANSIENT_FUNCTIONS: string[] = [];
 
 export const ChaincodeInvoke: React.FC = () => {
   const [channelName, setChannelName] = useState('');
   const [chaincodeName, setChaincodeName] = useState('');
-  const [fcn, setFcn] = useState('');
-  const [args, setArgs] = useState<string[]>(['']);
+  const [fcn, setFcn] = useState('createCar');
+  const [argValues, setArgValues] = useState<Record<string, string>>({});
   const [peers, setPeers] = useState<string[]>(['']);
-  const [transient, setTransient] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ApiResponse | null>(null);
 
-  const addArg = () => {
-    setArgs([...args, '']);
-  };
+  const functions = Object.keys(FUNCTION_ARGS);
+  const currentArgs = FUNCTION_ARGS[fcn as keyof typeof FUNCTION_ARGS] || [];
+  const isTransientFunction = TRANSIENT_FUNCTIONS.includes(fcn);
 
-  const removeArg = (index: number) => {
-    if (args.length > 1) {
-      setArgs(args.filter((_, i) => i !== index));
-    }
-  };
+  useEffect(() => {
+    // Reset arg values when function changes
+    const newArgValues: Record<string, string> = {};
+    currentArgs.forEach(arg => {
+      newArgValues[arg] = argValues[arg] || '';
+    });
+    setArgValues(newArgValues);
+  }, [fcn]);
 
-  const updateArg = (index: number, value: string) => {
-    const newArgs = [...args];
-    newArgs[index] = value;
-    setArgs(newArgs);
+  const updateArgValue = (argName: string, value: string) => {
+    setArgValues(prev => ({
+      ...prev,
+      [argName]: value
+    }));
   };
 
   const addPeer = () => {
@@ -55,27 +65,40 @@ export const ChaincodeInvoke: React.FC = () => {
     setResponse(null);
 
     try {
-      const filteredArgs = args.filter(arg => arg.trim() !== '');
       const filteredPeers = peers.filter(peer => peer.trim() !== '');
       
-      let transientData;
-      if (transient.trim()) {
-        try {
-          transientData = JSON.parse(transient);
-        } catch (e) {
-          throw new Error('Invalid JSON in transient data');
-        }
+      let requestData;
+      if (isTransientFunction) {
+        // For transient functions, send args as empty array and data in transient
+        const transientData: Record<string, string> = {};
+        currentArgs.forEach(arg => {
+          if (argValues[arg]) {
+            transientData[arg] = argValues[arg];
+          }
+        });
+
+        requestData = {
+          channelName,
+          chaincodeName,
+          fcn,
+          args: [],
+          peers: filteredPeers.length > 0 ? filteredPeers : undefined,
+          transient: transientData
+        };
+      } else {
+        // For regular functions, send args as array
+        const argsArray = currentArgs.map(arg => argValues[arg] || '');
+        
+        requestData = {
+          channelName,
+          chaincodeName,
+          fcn,
+          args: argsArray,
+          peers: filteredPeers.length > 0 ? filteredPeers : undefined
+        };
       }
 
-      const result = await apiService.invokeChaincode({
-        channelName,
-        chaincodeName,
-        fcn,
-        args: filteredArgs,
-        peers: filteredPeers.length > 0 ? filteredPeers : undefined,
-        transient: transientData
-      });
-
+      const result = await apiService.invokeChaincode(requestData);
       setResponse(result);
     } catch (error) {
       setResponse({
@@ -136,51 +159,50 @@ export const ChaincodeInvoke: React.FC = () => {
           <label htmlFor="fcn" className="block text-sm font-medium text-gray-700 mb-2">
             Function Name *
           </label>
-          <input
+          <select
             id="fcn"
-            type="text"
             value={fcn}
             onChange={(e) => setFcn(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., createAsset"
             required
-          />
+          >
+            {functions.map((func) => (
+              <option key={func} value={func}>
+                {func}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Arguments
-          </label>
-          <div className="space-y-3">
-            {args.map((arg, index) => (
-              <div key={index} className="flex gap-3">
-                <input
-                  type="text"
-                  value={arg}
-                  onChange={(e) => updateArg(index, e.target.value)}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={`Argument ${index + 1}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeArg(index)}
-                  disabled={args.length === 1}
-                  className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addArg}
-              className="flex items-center px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Argument
-            </button>
+        {currentArgs.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {isTransientFunction ? 'Transient Data' : 'Arguments'} *
+            </label>
+            <div className="space-y-3">
+              {currentArgs.map((arg) => (
+                <div key={arg}>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {arg}
+                  </label>
+                  <input
+                    type="text"
+                    value={argValues[arg] || ''}
+                    onChange={(e) => updateArgValue(arg, e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={`Enter ${arg}`}
+                    required
+                  />
+                </div>
+              ))}
+            </div>
+            {isTransientFunction && (
+              <p className="mt-2 text-sm text-gray-500">
+                This function uses transient data for private information
+              </p>
+            )}
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -202,7 +224,7 @@ export const ChaincodeInvoke: React.FC = () => {
                   disabled={peers.length === 1}
                   className="px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  Remove
                 </button>
               </div>
             ))}
@@ -211,24 +233,9 @@ export const ChaincodeInvoke: React.FC = () => {
               onClick={addPeer}
               className="flex items-center px-4 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
             >
-              <Plus className="w-4 h-4 mr-2" />
               Add Peer
             </button>
           </div>
-        </div>
-
-        <div>
-          <label htmlFor="transient" className="block text-sm font-medium text-gray-700 mb-2">
-            Transient Data (Optional JSON)
-          </label>
-          <textarea
-            id="transient"
-            value={transient}
-            onChange={(e) => setTransient(e.target.value)}
-            rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder='{"key": "value"}'
-          />
         </div>
 
         <button

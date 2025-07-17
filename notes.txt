@@ -8,6 +8,11 @@
 
 -> For above two steps configure and run create-artifacts.sh
 
+3) run genrate-ccp.sh in api-2.0/config
+4) uncomment preset funcn in deployChaincode.sh
+5) run ./start.sh
+
+
 3) do 'docker-compose up -d' in artifacts directory
 4) execute createChannel.sh in WORKDIR - to create channel, join peers and update anchor peers
     check if peers are on network eg:-  docker exec -it peer0.org1.example.com 

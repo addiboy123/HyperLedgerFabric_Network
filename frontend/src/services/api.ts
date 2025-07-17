@@ -100,7 +100,7 @@ class ApiService {
   async queryChaincode(request: QueryRequest): Promise<ApiResponse> {
     const params = new URLSearchParams({
       fcn: request.fcn,
-      args: request.args,
+      args: JSON.stringify(request.args),
     });
 
     if (request.peer) {
@@ -121,7 +121,7 @@ class ApiService {
   async queryQSCC(request: QueryRequest): Promise<ApiResponse> {
     const params = new URLSearchParams({
       fcn: request.fcn,
-      args: request.args,
+      args: JSON.stringify(request.args),
     });
 
     const response = await fetch(

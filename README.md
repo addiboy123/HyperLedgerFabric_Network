@@ -38,7 +38,7 @@
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/addiboy123/HyperLedgerFabric_Network/new/main
+   git clone https://github.com/addiboy123/HyperLedgerFabric_Network.git
    cd HyperLedgerFabric_Network
    ```
 

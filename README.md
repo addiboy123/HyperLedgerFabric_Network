@@ -25,7 +25,7 @@
 ## ⚙️ Pre-requisites
 
 * Install **Hyperledger Fabric**
-* Export path to the `fabric-samples/bin` directory
+* Export the path `fabric-samples/bin`
 
   ```bash
   export PATH=$PATH:/path/to/fabric-samples/bin
